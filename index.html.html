@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" translate="no"><head><meta charset="utf-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recitation Sign-Up</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--tx:#222;--mut:#777;--ac:#7a4b2a;--bd:#ddd}
+@media(prefers-color-scheme:dark){:root{--bg:#1d1b19;--card:#2a2725;--tx:#eee;--mut:#aaa;--ac:#d9a066;--bd:#444}}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+header{padding:16px 20px;background:var(--ac);color:#fff}h1{margin:0;font-size:1.3rem}
+nav{display:flex;gap:6px;padding:10px 20px;flex-wrap:wrap}
+nav button{padding:10px 16px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;font-size:1rem;cursor:pointer}
+nav button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+main{padding:0 20px 30px;max-width:900px;margin:auto}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:14px}
+label{display:block;margin:10px 0 4px;font-size:.9rem;color:var(--mut)}
+input,select{width:100%;padding:12px;font-size:1rem;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
+.btn{margin-top:14px;padding:12px 20px;background:var(--ac);color:#fff;border:0;border-radius:8px;font-size:1rem;cursor:pointer}
+.btn.s{background:none;color:var(--ac);border:1px solid var(--ac);margin:0 6px 0 0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.stat b{display:block;font-size:2rem;color:var(--ac)}.stat span{color:var(--mut);font-size:.9rem}
+.bar{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:.9rem}
+.bar i{display:block;height:18px;background:var(--ac);border-radius:4px;min-width:2px}.bar em{width:150px;font-style:normal;flex:none}
+table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bd)}
+.wrap{overflow-x:auto}.msg{color:var(--ac);margin-top:10px;min-height:1.2em}.x{background:none;border:0;color:#c33;cursor:pointer;font-size:1.1rem}
+</style></head><body>
+<header><h1>⛪ Recitation Sign-Up</h1></header>
+<nav id="nav"></nav><div id="sb" style="padding:0 20px;color:var(--mut);font-size:.85rem"></div><main id="m"></main>
+<script>
+var D=["First Dua","Second Dua","Ginan","Dua Between First & Second Dua","Farman","Article","Announcements","Other / Miscellaneous"];
+var tab="signup",msg="";
+function ld(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){msg="Could not save (browser storage blocked)."}}
+var parts=ld("parts2",D),S=ld("signups",[]);
+var URL_=ld("url",""),Q=ld("queue",[]),sync="";
+function post(o){return fetch(URL_,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(o)})}
+function op(o){if(!URL_)return;Q.push(o);sv("queue",Q);flush().then(draw)}
+function flush(){if(!URL_||!Q.length)return Promise.resolve();var o=Q[0];return post(o).then(function(){Q.shift();sv("queue",Q);return flush()}).catch(function(){sync="Offline: "+Q.length+" change(s) waiting to upload."})}
+function pull(){if(!URL_)return;sync="Syncing...";draw();flush().then(function(){if(Q.length){draw();return}return fetch(URL_).then(function(r){return r.json()}).then(function(a){S=a;sv("signups",S);sync="Synced "+new Date().toLocaleTimeString("en-US");draw()})}).catch(function(){sync="Offline: showing saved data.";draw()})}
+function gs(){URL_=v("gu").trim();sv("url",URL_);msg="";draw();pull()}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function today(){var d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)}
+function add(dt,n){var d=new Date(dt+"T12:00:00");d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
+function fmt(dt){return new Date(dt+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
+function go(t){tab=t;msg="";draw()}
+function draw(){
+ var n=document.getElementById("nav");
+ n.innerHTML=[["signup","Sign Up"],["dash","Dashboard"],["list","All Sign-Ups"],["set","Settings"]].map(function(t){return'<button class="'+(tab==t[0]?"on":"")+'" onclick="go(\''+t[0]+'\')">'+t[1]+'</button>'}).join("");
+ document.getElementById("sb").textContent=URL_?sync:"Not connected to Google Sheet (saving on this device only)";
+ var m=document.getElementById("m");
+ if(tab=="signup")m.innerHTML=fSign();else if(tab=="dash")m.innerHTML=fDash();else if(tab=="list")m.innerHTML=fList();else m.innerHTML=fSet();
+}
+function fSign(){
+ return'<div class="card"><h2>Sign up for a part</h2><label>Full name</label><input id="n"><label>Email</label><input id="e" type="email"><label>Phone</label><input id="p" type="tel"><label>Part</label><select id="pt">'+parts.map(function(p,i){return'<option value="'+i+'">'+(i+1)+'. '+esc(p)+'</option>'}).join("")+'</select><label>Sign-up / ceremony date</label><input id="d" type="date" value="'+today()+'" onchange="nx()"><p>Next turn: <b id="nt">'+fmt(add(today(),14))+'</b> (2 weeks later)</p><button class="btn" onclick="save()">Sign Up</button><div class="msg">'+esc(msg)+'</div></div>';
+}
+function nx(){var d=document.getElementById("d").value;if(d)document.getElementById("nt").textContent=fmt(add(d,14))}
+function save(){
+ var n=v("n").trim(),e=v("e").trim(),p=v("p").trim(),d=v("d");
+ if(!n||!d||(!e&&!p)){msg="Please enter a name, date, and an email or phone.";draw();return}
+ var r={id:Date.now(),name:n,email:e,phone:p,part:+v("pt"),date:d,next:add(d,14)};S.push(r);op({action:"add",id:r.id,date:r.date,name:r.name,email:r.email,phone:r.phone,part:r.part,partName:parts[r.part],next:r.next});
+ sv("signups",S);msg="✓ "+n+" signed up for "+parts[+v("pt")]+". Next turn: "+fmt(add(d,14));draw();
+}
+function v(i){return document.getElementById(i).value}
+function key(s){return(s.email||s.phone).toLowerCase()}
+function fDash(){
+ var people={},byPart=parts.map(function(){return 0}),t=today();
+ S.forEach(function(s){var k=key(s);people[k]=people[k]||{name:s.name,c:0};people[k].c++;byPart[s.part]++});
+ var top=Object.keys(people).map(function(k){return people[k]}).sort(function(a,b){return b.c-a.c}).slice(0,5);
+ var up=S.filter(function(s){return s.next>=t&&s.next<=add(t,14)}).sort(function(a,b){return a.next<b.next?-1:1});
+ var mx=Math.max.apply(null,byPart.concat([1]));
+ var open=byPart.filter(function(c){return c==0}).length;
+ return'<div class="stats"><div class="card stat"><b>'+S.length+'</b><span>Total sign-ups</span></div><div class="card stat"><b>'+Object.keys(people).length+'</b><span>Unique people</span></div><div class="card stat"><b>'+up.length+'</b><span>Turns due in next 14 days</span></div><div class="card stat"><b>'+open+'</b><span>Parts never signed up</span></div></div>'+
+ '<div class="card"><h3>Sign-ups by part</h3>'+parts.map(function(p,i){return'<div class="bar"><em>'+esc(p)+'</em><i style="width:'+(byPart[i]/mx*60)+'%"></i> '+byPart[i]+'</div>'}).join("")+'</div>'+
+ '<div class="card"><h3>Most frequent reciters</h3>'+(top.length?top.map(function(p,i){return'<div>'+(i+1)+'. '+esc(p.name)+' — '+p.c+'</div>'}).join(""):'<span style="color:var(--mut)">No data yet</span>')+'</div>'+
+ '<div class="card"><h3>Upcoming turns (next 14 days)</h3>'+(up.length?'<div class="wrap"><table><tr><th>Date</th><th>Name</th><th>Part</th><th>Contact</th></tr>'+up.map(function(s){return'<tr><td>'+fmt(s.next)+'</td><td>'+esc(s.name)+'</td><td>'+esc(parts[s.part])+'</td><td>'+esc(s.phone||s.email)+'</td></tr>'}).join("")+'</table></div>':'<span style="color:var(--mut)">None</span>')+'</div>';
+}
+function fList(){
+ var r=S.slice().sort(function(a,b){return a.date<b.date?1:-1});
+ return'<div class="card"><button class="btn s" onclick="pull()">Sync now</button><button class="btn s" onclick="csv()">Export CSV</button><button class="btn s" onclick="document.getElementById(\'f\').click()">Import CSV</button><input id="f" type="file" accept=".csv" hidden onchange="imp(this)"><div class="msg">'+esc(msg)+'</div><div class="wrap"><table><tr><th>Date</th><th>Name</th><th>Email</th><th>Phone</th><th>Part</th><th>Next turn</th><th></th></tr>'+r.map(function(s){return'<tr><td>'+fmt(s.date)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.email)+'</td><td>'+esc(s.phone)+'</td><td>'+esc(parts[s.part]||"?")+'</td><td>'+fmt(s.next)+'</td><td><button class="x" onclick="del('+s.id+')">✕</button></td></tr>'}).join("")+'</table></div></div>';
+}
+function del(id){if(confirm("Delete this sign-up?")){S=S.filter(function(s){return s.id!=id});sv("signups",S);op({action:"delete",id:id});draw()}}
+function q(x){return'"'+String(x).replace(/"/g,'""')+'"'}
+function csv(){
+ var rows=[["Date","Name","Email","Phone","Part","Next turn"]].concat(S.map(function(s){return[s.date,s.name,s.email,s.phone,parts[s.part],s.next]}));
+ var b=new Blob([rows.map(function(r){return r.map(q).join(",")}).join("\n")],{type:"text/csv"});
+ var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="signups.csv";a.click();
+}
+function parse(t){var rows=[],r=[],c="",iq=false;for(var i=0;i<t.length;i++){var ch=t[i];if(iq){if(ch=='"'&&t[i+1]=='"'){c+='"';i++}else if(ch=='"')iq=false;else c+=ch}else if(ch=='"')iq=true;else if(ch==","){r.push(c);c=""}else if(ch=="\n"){r.push(c);rows.push(r);r=[];c=""}else if(ch!="\r")c+=ch}if(c||r.length){r.push(c);rows.push(r)}return rows}
+function imp(el){
+ var f=el.files[0];if(!f)return;var rd=new FileReader();
+ rd.onload=function(){var n=0;parse(rd.result).slice(1).forEach(function(r){if(r.length<5||!r[1])return;var pi=parts.indexOf(r[4]);var x={id:Date.now()+n,name:r[1],email:r[2],phone:r[3],part:pi<0?0:pi,date:r[0],next:r[5]||add(r[0],14)};S.push(x);op({action:"add",id:x.id,date:x.date,name:x.name,email:x.email,phone:x.phone,part:x.part,partName:parts[x.part],next:x.next});n++});sv("signups",S);msg="Imported "+n+" rows.";draw()};
+ rd.readAsText(f);
+}
+function fSet(){
+ return'<div class="card"><h3>Google Sheet connection</h3><label>Web app URL</label><input id="gu" value="'+esc(URL_)+'" placeholder="https://script.google.com/macros/s/.../exec"><button class="btn" onclick="gs()">Save &amp; sync</button></div><div class="card"><h3>Rename the 8 parts</h3>'+parts.map(function(p,i){return'<label>Part '+(i+1)+'</label><input id="pp'+i+'" value="'+esc(p)+'">'}).join("")+'<button class="btn" onclick="sp()">Save names</button><div class="msg">'+esc(msg)+'</div></div><div class="card"><h3>Reset</h3><button class="btn s" onclick="if(confirm(\'Delete ALL sign-ups?\')){S=[];sv(\'signups\',S);msg=\'All sign-ups cleared.\';draw()}">Clear all sign-ups</button></div>';
+}
+function sp(){parts=parts.map(function(p,i){return v("pp"+i).trim()||D[i]});sv("parts2",parts);msg="✓ Saved";draw()}
+draw();pull();window.addEventListener("online",pull);
+</script></body></html>
